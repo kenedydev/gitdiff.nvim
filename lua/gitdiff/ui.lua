@@ -5,15 +5,14 @@ local debounce_timers = {}
 local M = {}
 
 function M.setup_highlights()
-	vim.api.nvim_set_hl(0, "GitDiffAdd", { fg = "#a6e3a1", bold = true }) -- Verde
-	vim.api.nvim_set_hl(0, "GitDiffChange", { fg = "#89b4fa", bold = true }) -- Azul
-	vim.api.nvim_set_hl(0, "GitDiffDelete", { fg = "#f38ba8", bold = true }) -- Vermelho
+	vim.api.nvim_set_hl(0, "GitDiffAdd", { fg = "#00ff00", bold = true })
+	vim.api.nvim_set_hl(0, "GitDiffChange", { fg = "#0077ff", bold = true })
+	vim.api.nvim_set_hl(0, "GitDiffDelete", { fg = "#ff0000", bold = true })
+	vim.api.nvim_set_hl(0, "GitDiffUntracked", { fg = "#ff7700", bold = true })
 
-	vim.api.nvim_set_hl(0, "GitDiffStagedAdd", { fg = "#94e2d5", bold = true })
-	vim.api.nvim_set_hl(0, "GitDiffStagedChange", { fg = "#b4befe", bold = true })
-	vim.api.nvim_set_hl(0, "GitDiffStagedDelete", { fg = "#f38ba8", bold = true })
-
-	vim.api.nvim_set_hl(0, "GitDiffUntracked", { fg = "#cba6f7", bold = true }) -- Roxo
+	vim.api.nvim_set_hl(0, "GitDiffStagedAdd", { fg = "#007f00" })
+	vim.api.nvim_set_hl(0, "GitDiffStagedChange", { fg = "#003f7f" })
+	vim.api.nvim_set_hl(0, "GitDiffStagedDelete", { fg = "#7f0000" })
 end
 
 local function place_marks(bufnr, diff_data, hl_prefix, priority)
