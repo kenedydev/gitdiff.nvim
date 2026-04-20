@@ -1,6 +1,4 @@
-local diff = require("gitdiff.diff")
 local ns_id = vim.api.nvim_create_namespace("gitdiff_signs")
-local debounce_timers = {}
 
 local M = {}
 
@@ -50,12 +48,11 @@ local function place_marks(bufnr, diff_data, hl_prefix, priority)
 	end
 end
 
-local function draw_signs(bufnr)
+function M.render(bufnr, data, opts)
 	if not vim.api.nvim_buf_is_valid(bufnr) then
 		return
 	end
 
-	local data = diff.calculate(bufnr)
 	if not data then
 		return
 	end
@@ -68,32 +65,15 @@ local function draw_signs(bufnr)
 			vim.api.nvim_buf_set_extmark(bufnr, ns_id, i, 0, {
 				sign_text = "+",
 				sign_hl_group = "GitDiffUntracked",
-				priority = 10,
+				priority = opts.priority or 10,
 			})
 		end
 		return
 	end
 
-	place_marks(bufnr, data.staged, "GitDiffStaged", 9)
+	place_marks(bufnr, data.staged, "GitDiffStaged", (opts.priority or 10) - 1)
 
-	place_marks(bufnr, data.unstaged, "GitDiff", 10)
-end
-
-function M.schedule_update(bufnr)
-	if not debounce_timers[bufnr] then
-		debounce_timers[bufnr] = vim.uv.new_timer()
-	end
-
-	local timer = debounce_timers[bufnr]
-	timer:stop()
-
-	timer:start(
-		200,
-		0,
-		vim.schedule_wrap(function()
-			draw_signs(bufnr)
-		end)
-	)
+	place_marks(bufnr, data.unstaged, "GitDiff", opts.priority or 10)
 end
 
 return M
