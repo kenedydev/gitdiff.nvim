@@ -1,9 +1,6 @@
-local state = require("gitdiff.state")
-
 local M = {}
 
-function M.calculate(bufnr)
-	local git_state = state.get(bufnr)
+function M.calculate(git_state, current_lines)
 	if not git_state then
 		return nil
 	end
@@ -12,11 +9,6 @@ function M.calculate(bufnr)
 		return { type = "untracked" }
 	end
 
-	if not vim.api.nvim_buf_is_valid(bufnr) then
-		return nil
-	end
-
-	local current_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 	local current_text = table.concat(current_lines, "\n") .. "\n"
 
 	local diff_opts = {
