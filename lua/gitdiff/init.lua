@@ -1,4 +1,4 @@
-local state = require("gitdiff.state")
+local git = require("gitdiff.git")
 local diff = require("gitdiff.diff")
 local signs = require("gitdiff.signs")
 local config = require("gitdiff.config")
@@ -19,9 +19,9 @@ local function pipeline(bufnr, fetch_from_git)
 	end
 
 	if fetch_from_git then
-		state.update(bufnr, run_logic)
+		git.update(bufnr, run_logic)
 	else
-		run_logic(state.get(bufnr))
+		run_logic(git.get(bufnr))
 	end
 end
 
@@ -60,7 +60,7 @@ function M.setup(opts)
 	vim.api.nvim_create_autocmd("BufDelete", {
 		group = group,
 		callback = function(args)
-			state.clear(args.buf)
+			git.clear(args.buf)
 		end,
 	})
 end
