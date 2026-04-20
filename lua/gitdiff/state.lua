@@ -19,61 +19,57 @@ function M.update(bufnr)
 	local filedir = vim.fn.fnamemodify(filepath, ":h")
 	local filename = vim.fn.fnamemodify(filepath, ":t")
 
-	vim.system({ "git", "status", "--porcelain", "--", filename }, { text = true, cwd = filedir }, function(status_obj)
-		vim.schedule(function()
-			if not vim.api.nvim_buf_is_valid(bufnr) then
-				M._jobs[bufnr] = nil
-				return
-			end
+	local results = {
+		status = "",
+		index = "",
+		head = "",
+		completed = 0,
+	}
 
-			if status_obj.code ~= 0 then
-				M.cache[bufnr] = nil
+	local function check_done()
+		results.completed = results.completed + 1
+
+		if results.completed == 3 then
+			vim.schedule(function()
+				if not vim.api.nvim_buf_is_valid(bufnr) or vim.api.nvim_buf_get_name(bufnr) ~= filepath then
+					M._jobs[bufnr] = nil
+					return
+				end
+
+				local is_untracked = results.status:match("^%?%?") ~= nil
+
+				if is_untracked then
+					M.cache[bufnr] = {
+						is_untracked = true,
+						index_text = nil,
+						head_text = nil,
+					}
+				else
+					M.cache[bufnr] = {
+						is_untracked = false,
+						index_text = results.index,
+						head_text = results.head,
+					}
+				end
+
 				M.check_queue(bufnr)
-				return
-			end
-
-			local is_untracked = status_obj.stdout and status_obj.stdout:match("^%?%?")
-
-			if is_untracked then
-				M.cache[bufnr] = { is_untracked = true }
-				M.check_queue(bufnr)
-				return
-			end
-
-			vim.system({ "git", "show", ":./" .. filename }, { text = true, cwd = filedir }, function(idx_obj)
-				vim.schedule(function()
-					if not vim.api.nvim_buf_is_valid(bufnr) then
-						M._jobs[bufnr] = nil
-						return
-					end
-
-					local index_text = idx_obj.code == 0 and idx_obj.stdout or ""
-
-					vim.system(
-						{ "git", "show", "HEAD:./" .. filename },
-						{ text = true, cwd = filedir },
-						function(head_obj)
-							vim.schedule(function()
-								if not vim.api.nvim_buf_is_valid(bufnr) then
-									M._jobs[bufnr] = nil
-									return
-								end
-
-								local head_text = head_obj.code == 0 and head_obj.stdout or ""
-
-								M.cache[bufnr] = {
-									is_untracked = false,
-									index_text = index_text,
-									head_text = head_text,
-								}
-
-								M.check_queue(bufnr)
-							end)
-						end
-					)
-				end)
 			end)
-		end)
+		end
+	end
+
+	vim.system({ "git", "status", "--porcelain", "--", filename }, { cwd = filedir }, function(obj)
+		results.status = obj.code == 0 and obj.stdout or ""
+		check_done()
+	end)
+
+	vim.system({ "git", "show", ":./" .. filename }, { cwd = filedir }, function(obj)
+		results.index = obj.code == 0 and obj.stdout or ""
+		check_done()
+	end)
+
+	vim.system({ "git", "show", "HEAD:./" .. filename }, { cwd = filedir }, function(obj)
+		results.head = obj.code == 0 and obj.stdout or ""
+		check_done()
 	end)
 end
 
