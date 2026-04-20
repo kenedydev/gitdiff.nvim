@@ -3,7 +3,12 @@ local M = {
 	_jobs = {},
 }
 
-function M.update(bufnr)
+function M.update(bufnr, on_done)
+	local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+	if buftype ~= "" then
+		return
+	end
+
 	if M._jobs[bufnr] == "running" then
 		M._jobs[bufnr] = "queued"
 		return
@@ -36,23 +41,20 @@ function M.update(bufnr)
 					return
 				end
 
-				local is_untracked = results.status:match("^%?%?") ~= nil
+				M.cache[bufnr] = {
+					is_untracked = results.status:match("^%?%?") ~= nil,
+					index_text = results.index,
+					head_text = results.head,
+				}
 
-				if is_untracked then
-					M.cache[bufnr] = {
-						is_untracked = true,
-						index_text = nil,
-						head_text = nil,
-					}
-				else
-					M.cache[bufnr] = {
-						is_untracked = false,
-						index_text = results.index,
-						head_text = results.head,
-					}
+				local current_job_status = M._jobs[bufnr]
+				M._jobs[bufnr] = nil
+
+				if current_job_status == "queued" then
+					M.update(bufnr, on_done)
+				elseif on_done then
+					on_done(M.cache[bufnr])
 				end
-
-				M.check_queue(bufnr)
 			end)
 		end
 	end
@@ -71,18 +73,6 @@ function M.update(bufnr)
 		results.head = obj.code == 0 and obj.stdout or ""
 		check_done()
 	end)
-end
-
-function M.check_queue(bufnr)
-	if M._jobs[bufnr] == "queued" then
-		M._jobs[bufnr] = nil
-		M.update(bufnr)
-	else
-		M._jobs[bufnr] = nil
-		vim.schedule(function()
-			require("gitdiff.ui").schedule_update(bufnr)
-		end)
-	end
 end
 
 function M.get(bufnr)
