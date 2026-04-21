@@ -1,25 +1,17 @@
 local M = {}
 
-function M.calculate(git_state, current_lines)
-	if not git_state then
-		return nil
-	end
-
-	if git_state.is_untracked then
+function M.get_hunks_data(git_data, buffer_lines)
+	if git_data.is_untracked then
 		return { type = "untracked" }
 	end
 
-	local current_text = table.concat(current_lines, "\n") .. "\n"
+	local current_text = table.concat(buffer_lines, "\n") .. "\n"
 
-	local diff_opts = {
-		result_type = "indices",
-		algorithm = "histogram",
-		indent_heuristic = true,
-	}
+	local diff_opts = { result_type = "indices", algorithm = "histogram", indent_heuristic = true }
 
-	local staged_data = vim.text.diff(git_state.head_text, git_state.index_text, diff_opts)
+	local staged_data = vim.text.diff(git_data.head_text, git_data.index_text, diff_opts)
 
-	local unstaged_data = vim.text.diff(git_state.index_text, current_text, diff_opts)
+	local unstaged_data = vim.text.diff(git_data.index_text, current_text, diff_opts)
 
 	return {
 		type = "tracked",
