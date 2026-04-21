@@ -3,38 +3,36 @@ local diff = require("gitdiff.diff")
 local signs = require("gitdiff.signs")
 local config = require("gitdiff.config")
 
-local M = {}
+local M = {
+	cache = {},
+}
+
 local timers = {}
 
-local function pipeline(bufnr, fetch_from_git)
-	local opts = config.options
-	if not opts.enabled then
+local function pipeline(bufnr)
+	local git_data = M.cache[bufnr]
+	if not git_data then
 		return
 	end
 
-	local run_logic = function(git_data)
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		local diff_results = diff.calculate(git_data, lines)
-		signs.render(bufnr, diff_results, opts.signs)
-	end
-
-	if fetch_from_git then
-		git.update(bufnr, run_logic)
-	else
-		run_logic(git.get(bufnr))
-	end
+	local buffer_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local hunks_data = diff.get_hunks_data(git_data, buffer_lines)
+	signs.render(bufnr, hunks_data, config.options.signs)
 end
 
 function M.setup(opts)
 	config.setup(opts)
-	signs.setup_highlights()
+	signs.setup()
 
 	local group = vim.api.nvim_create_augroup("GitDiff", { clear = true })
 
 	vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "FocusGained" }, {
 		group = group,
 		callback = function(args)
-			pipeline(args.buf, true)
+			git.fetch(args.buf, function(git_data)
+				M.cache[args.buf] = git_data
+				pipeline(args.buf)
+			end)
 		end,
 	})
 
@@ -51,7 +49,7 @@ function M.setup(opts)
 				200,
 				0,
 				vim.schedule_wrap(function()
-					pipeline(args.buf, false)
+					pipeline(args.buf)
 				end)
 			)
 		end,
@@ -60,7 +58,12 @@ function M.setup(opts)
 	vim.api.nvim_create_autocmd("BufDelete", {
 		group = group,
 		callback = function(args)
-			git.clear(args.buf)
+			M.cache[args.buf] = nil
+
+			if timers[args.buf] then
+				timers[args.buf]:close()
+				timers[args.buf] = nil
+			end
 		end,
 	})
 end
